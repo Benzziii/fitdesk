@@ -76,6 +76,7 @@
           <span class="text-slate-500">HR:</span>
           <strong id="headerLiveBpm" class="text-slate-900 font-bold">76 BPM</strong>
         </div>
+        <button id="cloudSyncBtn" onclick="syncFromCloud(true)" class="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-xs font-semibold text-blue-700 transition flex items-center gap-1.5" title="Sinkronkan Data HP & Laptop dari Supabase Cloud"><span>🔄</span><span class="hidden sm:inline">Sinkronkan Cloud</span></button>
         <button id="soundToggleBtn" onclick="toggleSound()" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-700 transition flex items-center gap-1.5" title="Aktifkan/Matikan Suara Timer">
           <span id="soundIcon">🔔</span>
           <span id="soundLabel" class="hidden sm:inline">Suara Aktif</span>
@@ -2018,6 +2019,7 @@ if __name__ == "__main__":
     function toggleExerciseCompleted(exId) {
       completedExercisesMap[exId] = !completedExercisesMap[exId];
       safeSetStorage('fitdesk_completed_sets', completedExercisesMap);
+      pushStateToCloud();
       playBeep(completedExercisesMap[exId] ? 880 : 440, 140);
       renderSelectedDayDetails();
     }
@@ -2025,6 +2027,7 @@ if __name__ == "__main__":
     function applyOverloadBump() {
       overloadBonusKgMap[selectedDayKey] = (overloadBonusKgMap[selectedDayKey] || 0) + 2;
       safeSetStorage('fitdesk_overload_bonus', overloadBonusKgMap);
+      pushStateToCloud();
       playBeep(980, 180);
       renderSelectedDayDetails();
       showToast('Progressive Overload (+2 Repetisi / Set & Tempo Tahan 2 Detik) diterapkan pada jadwal ' + SCHEDULE_DATA[selectedDayKey].dayName + '!', 'info');
@@ -2100,6 +2103,7 @@ if __name__ == "__main__":
       const wk = document.getElementById('weekdayAlarmInput').value;
       const we = document.getElementById('weekendAlarmInput').value;
       safeSetStorage('fitdesk_alarms', { weekday: wk, weekend: we });
+      pushStateToCloud();
       showToast(`Pengingat disimpan: Weekday ${wk} WIB | Rabu & Weekend ${we} WIB`, 'info');
     }
 
@@ -2689,6 +2693,117 @@ if __name__ == "__main__":
       renderOverloadRecommendations();
     }
 
+    
+    // Two-Way Cross-Device Cloud Sync (HP <-> Laptop via Flask + Supabase)
+    function pushStateToCloud() {
+      const payload = {
+        completed_sets: completedExercisesMap,
+        overload_bonus: overloadBonusKgMap,
+        height_cm: parseFloat((document.getElementById('profileHeightCm') || {}).value) || 170,
+        target_weight_kg: parseFloat((document.getElementById('profileTargetWeightKg') || {}).value) || 68,
+        target_waist_cm: parseFloat((document.getElementById('profileTargetWaistCm') || {}).value) || 80,
+        age: parseInt((document.getElementById('userAgeInput') || {}).value, 10) || 30,
+        weekday_alarm: (document.getElementById('weekdayAlarmInput') || {}).value || '04:30',
+        weekend_alarm: (document.getElementById('weekendAlarmInput') || {}).value || '05:30'
+      };
+      try {
+        fetch('/api/state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).catch(function () {});
+      } catch (e) {}
+    }
+
+    function syncFromCloud(manualTrigger) {
+      const badge = document.getElementById('backendStatusBadge');
+      if (manualTrigger) {
+        showToast('🔄 Menyinkronkan data terbaru antara HP & Laptop dari Cloud Database...', 'info');
+      }
+      try {
+        fetch('/api/workouts').then(function (r) {
+          if (!r.ok) throw new Error('No API');
+          return r.json();
+        }).then(function (data) {
+          if (Array.isArray(data) && data.length > 0) {
+            workoutLogs = data.map(function (w) {
+              return {
+                id: w.id,
+                date: w.date,
+                day_key: w.day_key,
+                focus_area: w.focus_area,
+                duration_min: Number(w.duration_min),
+                avg_weight_kg: Number(w.avg_weight_kg),
+                total_sets: Number(w.total_sets),
+                total_reps: Number(w.total_reps),
+                total_volume_kg: Number(w.total_volume_kg),
+                calories_burned: Number(w.calories_burned),
+                rpe: Number(w.rpe),
+                avg_hr: Number(w.avg_hr || 124),
+                notes: w.notes || ''
+              };
+            });
+            safeSetStorage('fitdesk_workout_logs_v3', workoutLogs);
+          }
+          if (badge) badge.textContent = '☁️ Cloud Synced (HP ↔ Laptop Aktif)';
+          updateAllKpisAndTables();
+          renderWorkoutChart();
+          renderMuscleBalanceChart();
+        }).catch(function () {});
+
+        fetch('/api/weights').then(function (r) {
+          if (!r.ok) throw new Error('No API');
+          return r.json();
+        }).then(function (data) {
+          if (Array.isArray(data) && data.length > 0) {
+            weightLogs = data.map(function (w) {
+              return {
+                id: w.id,
+                date: w.date,
+                weight_kg: Number(w.weight_kg),
+                waist_cm: Number(w.waist_cm),
+                sleep_hrs: Number(w.sleep_hrs || 7.0),
+                notes: w.notes || ''
+              };
+            });
+            safeSetStorage('fitdesk_weight_logs_v3', weightLogs);
+            updateAllKpisAndTables();
+            renderWeightConsultation();
+            renderWeightChart();
+          }
+        }).catch(function () {});
+
+        fetch('/api/state').then(function (r) {
+          if (!r.ok) throw new Error('No API');
+          return r.json();
+        }).then(function (st) {
+          if (st && typeof st === 'object') {
+            if (st.completed_sets) {
+              completedExercisesMap = st.completed_sets;
+              safeSetStorage('fitdesk_completed_sets', completedExercisesMap);
+      pushStateToCloud();
+            }
+            if (st.overload_bonus) {
+              overloadBonusKgMap = st.overload_bonus;
+              safeSetStorage('fitdesk_overload_bonus', overloadBonusKgMap);
+      pushStateToCloud();
+            }
+            if (st.height_cm && document.getElementById('profileHeightCm')) document.getElementById('profileHeightCm').value = st.height_cm;
+            if (st.target_weight_kg && document.getElementById('profileTargetWeightKg')) document.getElementById('profileTargetWeightKg').value = st.target_weight_kg;
+            if (st.target_waist_cm && document.getElementById('profileTargetWaistCm')) document.getElementById('profileTargetWaistCm').value = st.target_waist_cm;
+            if (st.age && document.getElementById('userAgeInput')) document.getElementById('userAgeInput').value = st.age;
+            if (st.weekday_alarm && document.getElementById('weekdayAlarmInput')) document.getElementById('weekdayAlarmInput').value = st.weekday_alarm;
+            if (st.weekend_alarm && document.getElementById('weekendAlarmInput')) document.getElementById('weekendAlarmInput').value = st.weekend_alarm;
+            renderSelectedDayDetails();
+            renderWeightConsultation();
+          }
+          if (manualTrigger) {
+            showToast('✅ Data HP & Laptop berhasil disinkronkan!', 'info');
+          }
+        }).catch(function () {});
+      } catch (e) {}
+    }
+
     // Initialize on Window Load
     window.onload = function () {
       const todayIso = new Date().toISOString().slice(0, 10);
@@ -2704,6 +2819,7 @@ if __name__ == "__main__":
 
       simWatchRunning = false;
       toggleSmartwatchSimulation();
+      syncFromCloud(false);
     };
   </script>
 </body>
