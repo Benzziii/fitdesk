@@ -1,6 +1,9 @@
 import json
 import os
 import sqlite3
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
@@ -9,17 +12,55 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Cek apakah kredensial Supabase tersedia di Environment Variables (Vercel / .env)
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "").strip() or os.environ.get("SUPABASE_PUBLISHABLE_KEY", "").strip()
-supabase_client = None
+def get_supabase_creds():
+    url = (
+        os.environ.get("SUPABASE_URL")
+        or os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
+        or os.environ.get("VITE_SUPABASE_URL")
+        or ""
+    ).strip().rstrip("/")
+    key = (
+        os.environ.get("SUPABASE_KEY")
+        or os.environ.get("SUPABASE_ANON_KEY")
+        or os.environ.get("SUPABASE_PUBLISHABLE_KEY")
+        or os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+        or ""
+    ).strip()
+    # Allow runtime override from X-Supabase-Url / X-Supabase-Key headers if user configured via UI modal
+    req_url = request.headers.get("X-Supabase-Url", "").strip().rstrip("/")
+    req_key = request.headers.get("X-Supabase-Key", "").strip()
+    if req_url and req_key:
+        return req_url, req_key
+    return url, key
 
-if SUPABASE_URL and SUPABASE_KEY:
+
+def sb_request(method, table, query="", body=None, prefer="return=representation"):
+    url, key = get_supabase_creds()
+    if not url or not key:
+        return None, "SUPABASE_URL atau SUPABASE_KEY belum diset di Vercel Environment Variables"
+    endpoint = f"{url}/rest/v1/{table}"
+    if query:
+        endpoint += f"?{query}"
+    headers = {
+        "apikey": key,
+        "Content-Type": "application/json",
+        "Prefer": prefer,
+    }
+    # If key is a JWT (starts with eyJ), also send Authorization Bearer
+    if key.startswith("eyJ"):
+        headers["Authorization"] = f"Bearer {key}"
+    data_bytes = json.dumps(body).encode("utf-8") if body is not None else None
+    req = urllib.request.Request(endpoint, data=data_bytes, headers=headers, method=method)
     try:
-        from supabase import create_client
-        supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            raw = resp.read().decode("utf-8")
+            return (json.loads(raw) if raw else []), None
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="ignore")
+        return None, f"HTTP {e.code}: {err_body}"
     except Exception as e:
-        print("Warning: gagal inisialisasi Supabase client, beralih ke SQLite fallback:", e)
+        return None, str(e)
+
 
 IS_VERCEL = os.environ.get("VERCEL") == "1"
 DB_PATH = "/tmp/fitdesk.db" if IS_VERCEL else os.path.join(os.path.dirname(__file__), "fitdesk.db")
@@ -65,14 +106,6 @@ def init_sqlite_db():
         )
         """
     )
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS user_state (
-            id INTEGER PRIMARY KEY CHECK (id = 1),
-            state_json TEXT NOT NULL
-        )
-        """
-    )
     conn.commit()
     conn.close()
 
@@ -89,14 +122,30 @@ def index():
 
 @app.route("/api/status", methods=["GET"])
 def api_status():
+    url, key = get_supabase_creds()
+    if not url or not key:
+        return jsonify({
+            "cloud_connected": False,
+            "storage_mode": "local_fallback",
+            "reason": "Environment Variable SUPABASE_URL atau SUPABASE_KEY belum terbaca di Vercel (pastikan sudah Redeploy setelah menambah Environment Variables, atau masukkan langsung lewat tombol Pengaturan Cloud di aplikasi)."
+        })
+    rows, err = sb_request("GET", "workout_logs", "select=id&limit=1")
+    if err:
+        return jsonify({
+            "cloud_connected": False,
+            "storage_mode": "supabase_error",
+            "reason": f"Koneksi ke Supabase gagal ({err}). Pastikan Anda sudah menjalankan supabase_schema.sql di SQL Editor Supabase."
+        })
     return jsonify({
-        "cloud_connected": bool(supabase_client),
-        "storage_mode": "supabase_cloud" if supabase_client else "local_sqlite"
+        "cloud_connected": True,
+        "storage_mode": "supabase_cloud",
+        "reason": "Terhubung penuh ke Supabase PostgreSQL (HP & Laptop Sinkron Otomatis)"
     })
 
 
 @app.route("/api/workouts", methods=["GET", "POST"])
 def handle_workouts():
+    url, key = get_supabase_creds()
     if request.method == "POST":
         data = request.get_json() or {}
         date = data.get("date") or datetime.now().strftime("%Y-%m-%d")
@@ -129,9 +178,10 @@ def handle_workouts():
             "notes": notes,
         }
 
-        if supabase_client:
-            res = supabase_client.table("workout_logs").insert(record).execute()
-            return jsonify({"status": "success", "storage": "supabase", "data": res.data}), 201
+        if url and key:
+            res_data, err = sb_request("POST", "workout_logs", body=record)
+            if not err:
+                return jsonify({"status": "success", "storage": "supabase", "data": res_data}), 201
 
         conn = get_db_connection()
         cur = conn.cursor()
@@ -144,26 +194,28 @@ def handle_workouts():
             tuple(record.values()),
         )
         conn.commit()
-        new_id = cur.lastrowid
+        record["id"] = cur.lastrowid
         conn.close()
-        record["id"] = new_id
         return jsonify({"status": "success", "storage": "sqlite", "data": [record]}), 201
 
-    if supabase_client:
-        res = supabase_client.table("workout_logs").select("*").order("date", desc=True).order("id", desc=True).execute()
-        return jsonify(res.data)
+    if url and key:
+        rows, err = sb_request("GET", "workout_logs", "day_key=neq.__sync_state__&order=date.desc,id.desc")
+        if not err and rows is not None:
+            return jsonify(rows)
 
     conn = get_db_connection()
-    rows = conn.execute("SELECT * FROM workout_logs ORDER BY date DESC, id DESC").fetchall()
+    rows = conn.execute("SELECT * FROM workout_logs WHERE day_key != '__sync_state__' ORDER BY date DESC, id DESC").fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
 
 
 @app.route("/api/workouts/<int:log_id>", methods=["DELETE"])
 def delete_workout(log_id):
-    if supabase_client:
-        supabase_client.table("workout_logs").delete().eq("id", log_id).execute()
-        return jsonify({"status": "deleted", "storage": "supabase", "id": log_id})
+    url, key = get_supabase_creds()
+    if url and key:
+        _, err = sb_request("DELETE", "workout_logs", f"id=eq.{log_id}")
+        if not err:
+            return jsonify({"status": "deleted", "storage": "supabase", "id": log_id})
 
     conn = get_db_connection()
     conn.execute("DELETE FROM workout_logs WHERE id = ?", (log_id,))
@@ -174,6 +226,7 @@ def delete_workout(log_id):
 
 @app.route("/api/weights", methods=["GET", "POST"])
 def handle_weights():
+    url, key = get_supabase_creds()
     if request.method == "POST":
         data = request.get_json() or {}
         record = {
@@ -183,9 +236,10 @@ def handle_weights():
             "sleep_hrs": float(data.get("sleep_hrs", 7.0)),
             "notes": data.get("notes", ""),
         }
-        if supabase_client:
-            res = supabase_client.table("weight_logs").insert(record).execute()
-            return jsonify({"status": "success", "storage": "supabase", "data": res.data}), 201
+        if url and key:
+            res_data, err = sb_request("POST", "weight_logs", body=record)
+            if not err:
+                return jsonify({"status": "success", "storage": "supabase", "data": res_data}), 201
 
         conn = get_db_connection()
         cur = conn.cursor()
@@ -194,14 +248,14 @@ def handle_weights():
             tuple(record.values()),
         )
         conn.commit()
-        new_id = cur.lastrowid
+        record["id"] = cur.lastrowid
         conn.close()
-        record["id"] = new_id
         return jsonify({"status": "success", "storage": "sqlite", "data": [record]}), 201
 
-    if supabase_client:
-        res = supabase_client.table("weight_logs").select("*").order("date", desc=False).order("id", desc=False).execute()
-        return jsonify(res.data)
+    if url and key:
+        rows, err = sb_request("GET", "weight_logs", "order=date.asc,id.asc")
+        if not err and rows is not None:
+            return jsonify(rows)
 
     conn = get_db_connection()
     rows = conn.execute("SELECT * FROM weight_logs ORDER BY date ASC, id ASC").fetchall()
@@ -211,35 +265,66 @@ def handle_weights():
 
 @app.route("/api/state", methods=["GET", "POST"])
 def handle_state():
-    """Menyinkronkan checklist gerakan harian, bonus overload, dan profil antar HP & Laptop."""
+    """
+    Menyinkronkan checklist gerakan harian, bonus overload, dan profil antar HP & Laptop.
+    Menyimpan state di dalam tabel workout_logs dengan day_key='__sync_state__' agar
+    bekerja otomatis tanpa perlu membuat tabel baru di Supabase!
+    """
+    url, key = get_supabase_creds()
     if request.method == "POST":
         data = request.get_json() or {}
         state_str = json.dumps(data)
-        if supabase_client:
-            try:
-                supabase_client.table("user_state").upsert({"id": 1, "state_json": state_str}).execute()
+        if url and key:
+            # Hapus state lama lalu masukkan state terbaru di workout_logs (day_key = '__sync_state__')
+            sb_request("DELETE", "workout_logs", "day_key=eq.__sync_state__")
+            dummy_row = {
+                "date": "2099-12-31",
+                "day_key": "__sync_state__",
+                "focus_area": "SYSTEM_SYNC_STATE",
+                "duration_min": 0,
+                "avg_weight_kg": 0,
+                "total_sets": 0,
+                "total_reps": 0,
+                "total_volume_kg": 0,
+                "calories_burned": 0,
+                "rpe": 1,
+                "avg_hr": 0,
+                "notes": state_str,
+            }
+            _, err = sb_request("POST", "workout_logs", body=dummy_row)
+            if not err:
                 return jsonify({"status": "synced", "storage": "supabase"})
-            except Exception:
-                pass
+
         conn = get_db_connection()
-        conn.execute("INSERT OR REPLACE INTO user_state (id, state_json) VALUES (1, ?)", (state_str,))
+        conn.execute("DELETE FROM workout_logs WHERE day_key = '__sync_state__'")
+        conn.execute(
+            """
+            INSERT INTO workout_logs
+            (date, day_key, focus_area, duration_min, avg_weight_kg, total_sets, total_reps, total_volume_kg, calories_burned, rpe, avg_hr, notes)
+            VALUES ('2099-12-31', '__sync_state__', 'SYSTEM_SYNC_STATE', 0, 0, 0, 0, 0, 0, 1, 0, ?)
+            """,
+            (state_str,),
+        )
         conn.commit()
         conn.close()
         return jsonify({"status": "synced", "storage": "sqlite"})
 
-    if supabase_client:
-        try:
-            res = supabase_client.table("user_state").select("state_json").eq("id", 1).execute()
-            if res.data and len(res.data) > 0:
-                return jsonify(json.loads(res.data[0]["state_json"]))
-        except Exception:
-            pass
+    if url and key:
+        rows, err = sb_request("GET", "workout_logs", "day_key=eq.__sync_state__&order=id.desc&limit=1")
+        if not err and rows and len(rows) > 0:
+            try:
+                return jsonify(json.loads(rows[0].get("notes") or "{}"))
+            except Exception:
+                return jsonify({})
 
     conn = get_db_connection()
-    row = conn.execute("SELECT state_json FROM user_state WHERE id = 1").fetchone()
+    row = conn.execute("SELECT notes FROM workout_logs WHERE day_key = '__sync_state__' ORDER BY id DESC LIMIT 1").fetchone()
     conn.close()
-    if row:
-        return jsonify(json.loads(row["state_json"]))
+    if row and row["notes"]:
+        try:
+            return jsonify(json.loads(row["notes"]))
+        except Exception:
+            pass
     return jsonify({})
 
 

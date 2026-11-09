@@ -2195,7 +2195,7 @@ if __name__ == "__main__":
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newRecord)
-        }).catch(function () {});
+        }).then(function () { syncFromCloud(false); }).catch(function () {});
       } catch (e) {}
 
       updateAllKpisAndTables();
@@ -2226,7 +2226,7 @@ if __name__ == "__main__":
       workoutLogs = workoutLogs.filter(function (w) { return w.id !== id; });
       safeSetStorage('fitdesk_workout_logs_v3', workoutLogs);
       try {
-        fetch('/api/workouts/' + id, { method: 'DELETE' }).catch(function () {});
+        fetch('/api/workouts/' + id, { method: 'DELETE' }).then(function () { syncFromCloud(false); }).catch(function () {});
       } catch (e) {}
       updateAllKpisAndTables();
       showToast('Data log latihan dihapus.', 'warn');
@@ -2506,7 +2506,7 @@ if __name__ == "__main__":
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newEntry)
-        }).catch(function () {});
+        }).then(function () { syncFromCloud(false); }).catch(function () {});
       } catch (err) {}
 
       document.getElementById('weightNotesInput').value = '';
@@ -2718,9 +2718,20 @@ if __name__ == "__main__":
     function syncFromCloud(manualTrigger) {
       const badge = document.getElementById('backendStatusBadge');
       if (manualTrigger) {
-        showToast('🔄 Menyinkronkan data terbaru antara HP & Laptop dari Cloud Database...', 'info');
+        showToast('🔄 Menyinkronkan data terbaru antara HP & Laptop dari Supabase Cloud...', 'info');
       }
       try {
+        fetch('/api/status').then(function (r) { return r.json(); }).then(function (stInfo) {
+          if (stInfo && stInfo.cloud_connected) {
+            if (badge) {
+              badge.textContent = '🟢 Supabase Cloud Aktif (HP ↔ Laptop)';
+              badge.className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300';
+            }
+          } else if (stInfo && stInfo.reason && manualTrigger) {
+            showToast('⚠️ Status Server: ' + stInfo.reason, 'warn');
+          }
+        }).catch(function () {});
+
         fetch('/api/workouts').then(function (r) {
           if (!r.ok) throw new Error('No API');
           return r.json();
@@ -2744,11 +2755,10 @@ if __name__ == "__main__":
               };
             });
             safeSetStorage('fitdesk_workout_logs_v3', workoutLogs);
+            updateAllKpisAndTables();
+            renderWorkoutChart();
+            renderMuscleBalanceChart();
           }
-          if (badge) badge.textContent = '☁️ Cloud Synced (HP ↔ Laptop Aktif)';
-          updateAllKpisAndTables();
-          renderWorkoutChart();
-          renderMuscleBalanceChart();
         }).catch(function () {});
 
         fetch('/api/weights').then(function (r) {
@@ -2781,12 +2791,10 @@ if __name__ == "__main__":
             if (st.completed_sets) {
               completedExercisesMap = st.completed_sets;
               safeSetStorage('fitdesk_completed_sets', completedExercisesMap);
-      pushStateToCloud();
             }
             if (st.overload_bonus) {
               overloadBonusKgMap = st.overload_bonus;
               safeSetStorage('fitdesk_overload_bonus', overloadBonusKgMap);
-      pushStateToCloud();
             }
             if (st.height_cm && document.getElementById('profileHeightCm')) document.getElementById('profileHeightCm').value = st.height_cm;
             if (st.target_weight_kg && document.getElementById('profileTargetWeightKg')) document.getElementById('profileTargetWeightKg').value = st.target_weight_kg;
@@ -2798,7 +2806,7 @@ if __name__ == "__main__":
             renderWeightConsultation();
           }
           if (manualTrigger) {
-            showToast('✅ Data HP & Laptop berhasil disinkronkan!', 'info');
+            showToast('✅ Data HP & Laptop berhasil disinkronkan dari Cloud!', 'info');
           }
         }).catch(function () {});
       } catch (e) {}
@@ -2820,6 +2828,8 @@ if __name__ == "__main__":
       simWatchRunning = false;
       toggleSmartwatchSimulation();
       syncFromCloud(false);
+      window.addEventListener('focus', function () { syncFromCloud(false); });
+      setInterval(function () { syncFromCloud(false); }, 8000);
     };
   </script>
 </body>
