@@ -81,6 +81,8 @@ init_sqlite_db()
 
 
 @app.route("/")
+@app.route("/app.py")
+@app.route("/index.html")
 def index():
     return render_template("index.html")
 
