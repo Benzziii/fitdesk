@@ -27,13 +27,6 @@ CREATE TABLE IF NOT EXISTS public.weight_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Tabel untuk menyinkronkan checklist harian, status overload, dan profil antar HP & Laptop
-CREATE TABLE IF NOT EXISTS public.user_state (
-    id INTEGER PRIMARY KEY CHECK (id = 1),
-    state_json TEXT NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
 ALTER TABLE public.workout_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all access to workout_logs" ON public.workout_logs;
 CREATE POLICY "Allow all access to workout_logs" ON public.workout_logs FOR ALL USING (true) WITH CHECK (true);
@@ -41,16 +34,3 @@ CREATE POLICY "Allow all access to workout_logs" ON public.workout_logs FOR ALL 
 ALTER TABLE public.weight_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all access to weight_logs" ON public.weight_logs;
 CREATE POLICY "Allow all access to weight_logs" ON public.weight_logs FOR ALL USING (true) WITH CHECK (true);
-
-ALTER TABLE public.user_state ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow all access to user_state" ON public.user_state;
-CREATE POLICY "Allow all access to user_state" ON public.user_state FOR ALL USING (true) WITH CHECK (true);
-
--- Seed Data Awal (Khusus Sepasang Dumbbell 3 kg = 6 kg Total) jika tabel masih kosong
-INSERT INTO public.workout_logs (date, day_key, focus_area, duration_min, avg_weight_kg, total_sets, total_reps, total_volume_kg, calories_burned, rpe, avg_hr, notes)
-SELECT '2026-11-02', 'senin', 'Kaki 4 Sisi (Quad, Hamstring, Glute, Calf)', 35, 6.0, 15, 225, 1350.0, 250, 7, 128, 'Sepasang dumbbell 3kg (total 6kg) tempo lambat 3-1-2'
-WHERE NOT EXISTS (SELECT 1 FROM public.workout_logs LIMIT 1);
-
-INSERT INTO public.weight_logs (date, weight_kg, waist_cm, sleep_hrs, notes)
-SELECT '2026-11-08', 71.1, 82.3, 7.5, 'Data awal sinkronisasi cloud'
-WHERE NOT EXISTS (SELECT 1 FROM public.weight_logs LIMIT 1);

@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import sqlite3
@@ -11,6 +12,7 @@ from flask import Flask, jsonify, render_template, request
 load_dotenv()
 
 app = Flask(__name__)
+
 
 def get_supabase_creds():
     url = (
@@ -26,7 +28,6 @@ def get_supabase_creds():
         or os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
         or ""
     ).strip()
-    # Allow runtime override from X-Supabase-Url / X-Supabase-Key headers if user configured via UI modal
     req_url = request.headers.get("X-Supabase-Url", "").strip().rstrip("/")
     req_key = request.headers.get("X-Supabase-Key", "").strip()
     if req_url and req_key:
@@ -46,7 +47,6 @@ def sb_request(method, table, query="", body=None, prefer="return=representation
         "Content-Type": "application/json",
         "Prefer": prefer,
     }
-    # If key is a JWT (starts with eyJ), also send Authorization Bearer
     if key.startswith("eyJ"):
         headers["Authorization"] = f"Bearer {key}"
     data_bytes = json.dumps(body).encode("utf-8") if body is not None else None
@@ -113,6 +113,46 @@ def init_sqlite_db():
 init_sqlite_db()
 
 
+def hash_pin(pin_str):
+    return hashlib.sha256(pin_str.strip().encode("utf-8")).hexdigest()
+
+
+def get_stored_pin_hash():
+    """Mengecek apakah ada hash Secret Sync Key / PIN di environment variable atau di database."""
+    env_pin = (os.environ.get("SYNC_PIN") or os.environ.get("APP_SYNC_PIN") or "").strip()
+    if env_pin:
+        return hash_pin(env_pin)
+
+    url, key = get_supabase_creds()
+    if url and key:
+        rows, err = sb_request("GET", "workout_logs", "day_key=eq.__pin_guard__&order=id.desc&limit=1")
+        if not err and rows and len(rows) > 0:
+            return (rows[0].get("notes") or "").strip()
+        return ""
+
+    conn = get_db_connection()
+    row = conn.execute("SELECT notes FROM workout_logs WHERE day_key = '__pin_guard__' ORDER BY id DESC LIMIT 1").fetchone()
+    conn.close()
+    return (row["notes"] or "").strip() if row else ""
+
+
+def verify_request_pin():
+    """
+    Memverifikasi header X-Sync-Key dari browser.
+    - Jika database sudah dikunci dengan Secret Sync Key / PIN, maka setiap perangkat
+      wajib mengirimkan X-Sync-Key yang cocok untuk membaca atau menulis data.
+    """
+    stored_hash = get_stored_pin_hash()
+    if not stored_hash:
+        return True, ""
+    client_pin = (request.headers.get("X-Sync-Key") or "").strip()
+    if not client_pin:
+        return False, "Website ini diproteksi dengan Secret Sync Key / PIN. Masukkan PIN pribadi Anda untuk membuka dan menyinkronkan data."
+    if hash_pin(client_pin) != stored_hash:
+        return False, "Secret Sync Key / PIN tidak cocok! Masukkan PIN yang sama seperti di perangkat utama Anda."
+    return True, ""
+
+
 @app.route("/")
 @app.route("/app.py")
 @app.route("/index.html")
@@ -120,31 +160,128 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/api/pin", methods=["POST"])
+def manage_pin():
+    """Mengatur, memverifikasi, atau membuka kunci Secret Sync Key / PIN Cloud."""
+    data = request.get_json() or {}
+    action = data.get("action", "verify")
+    new_pin = (data.get("pin") or "").strip()
+    current_pin = (request.headers.get("X-Sync-Key") or data.get("current_pin") or "").strip()
+
+    stored_hash = get_stored_pin_hash()
+    url, key = get_supabase_creds()
+
+    if action == "set":
+        if not new_pin or len(new_pin) < 3:
+            return jsonify({"ok": False, "message": "Secret Sync Key / PIN minimal 3 karakter (contoh: DCA2029-RAHASIA)."}), 400
+
+        # Jika di database sudah ada PIN, dan new_pin cocok dengan stored_hash -> berarti user sedang login di perangkat baru (HP/Laptop)
+        if stored_hash and hash_pin(new_pin) == stored_hash:
+            return jsonify({
+                "ok": True,
+                "pin_protected": True,
+                "message": "Secret Sync Key cocok! Perangkat ini berhasil terhubung & tersinkronisasi."
+            })
+
+        # Jika di database sudah ada PIN, dan user ingin mengganti PIN baru, harus tahu current_pin lama
+        if stored_hash and hash_pin(current_pin) != stored_hash:
+            return jsonify({
+                "ok": False,
+                "locked": True,
+                "message": "Database Cloud sudah dikunci dengan Secret Sync Key lain. Masukkan Sync Key yang sama dengan yang Anda atur di perangkat pertama!"
+            }), 401
+
+        new_hash = hash_pin(new_pin)
+        if url and key:
+            sb_request("DELETE", "workout_logs", "day_key=eq.__pin_guard__")
+            guard_row = {
+                "date": "2099-12-31",
+                "day_key": "__pin_guard__",
+                "focus_area": "SYSTEM_PIN_GUARD",
+                "duration_min": 0,
+                "avg_weight_kg": 0,
+                "total_sets": 0,
+                "total_reps": 0,
+                "total_volume_kg": 0,
+                "calories_burned": 0,
+                "rpe": 1,
+                "avg_hr": 0,
+                "notes": new_hash,
+            }
+            sb_request("POST", "workout_logs", body=guard_row)
+        else:
+            conn = get_db_connection()
+            conn.execute("DELETE FROM workout_logs WHERE day_key = '__pin_guard__'")
+            conn.execute(
+                """
+                INSERT INTO workout_logs
+                (date, day_key, focus_area, duration_min, avg_weight_kg, total_sets, total_reps, total_volume_kg, calories_burned, rpe, avg_hr, notes)
+                VALUES ('2099-12-31', '__pin_guard__', 'SYSTEM_PIN_GUARD', 0, 0, 0, 0, 0, 0, 1, 0, ?)
+                """,
+                (new_hash,),
+            )
+            conn.commit()
+            conn.close()
+
+        return jsonify({
+            "ok": True,
+            "pin_protected": True,
+            "message": "Secret Sync Key / PIN berhasil dikunci di Cloud! Masukkan kode yang sama di perangkat lain (HP/Desktop)."
+        })
+
+    if action == "unlock_off":
+        if stored_hash and hash_pin(current_pin) != stored_hash:
+            return jsonify({"ok": False, "message": "Secret Sync Key saat ini tidak cocok."}), 401
+        if url and key:
+            sb_request("DELETE", "workout_logs", "day_key=eq.__pin_guard__")
+        else:
+            conn = get_db_connection()
+            conn.execute("DELETE FROM workout_logs WHERE day_key = '__pin_guard__'")
+            conn.commit()
+            conn.close()
+        return jsonify({"ok": True, "pin_protected": False, "message": "Kunci PIN Cloud dinonaktifkan."})
+
+    ok, msg = verify_request_pin()
+    return jsonify({"ok": ok, "pin_protected": bool(stored_hash), "message": msg or "PIN valid"}), (200 if ok else 401)
+
+
 @app.route("/api/status", methods=["GET"])
 def api_status():
     url, key = get_supabase_creds()
+    stored_hash = get_stored_pin_hash()
+    pin_ok, pin_msg = verify_request_pin()
     if not url or not key:
         return jsonify({
             "cloud_connected": False,
+            "pin_protected": bool(stored_hash),
+            "pin_verified": pin_ok,
             "storage_mode": "local_fallback",
-            "reason": "Environment Variable SUPABASE_URL atau SUPABASE_KEY belum terbaca di Vercel (pastikan sudah Redeploy setelah menambah Environment Variables, atau masukkan langsung lewat tombol Pengaturan Cloud di aplikasi)."
+            "reason": "Environment Variable SUPABASE_URL atau SUPABASE_KEY belum terbaca di Vercel."
         })
     rows, err = sb_request("GET", "workout_logs", "select=id&limit=1")
     if err:
         return jsonify({
             "cloud_connected": False,
+            "pin_protected": bool(stored_hash),
+            "pin_verified": pin_ok,
             "storage_mode": "supabase_error",
-            "reason": f"Koneksi ke Supabase gagal ({err}). Pastikan Anda sudah menjalankan supabase_schema.sql di SQL Editor Supabase."
+            "reason": f"Koneksi ke Supabase gagal ({err})."
         })
     return jsonify({
         "cloud_connected": True,
+        "pin_protected": bool(stored_hash),
+        "pin_verified": pin_ok,
         "storage_mode": "supabase_cloud",
-        "reason": "Terhubung penuh ke Supabase PostgreSQL (HP & Laptop Sinkron Otomatis)"
+        "reason": pin_msg if not pin_ok else "Terhubung penuh ke Supabase PostgreSQL (HP & Laptop Sinkron Otomatis)"
     })
 
 
 @app.route("/api/workouts", methods=["GET", "POST"])
 def handle_workouts():
+    pin_ok, pin_msg = verify_request_pin()
+    if not pin_ok:
+        return jsonify({"error": pin_msg, "pin_required": True}), 401
+
     url, key = get_supabase_creds()
     if request.method == "POST":
         data = request.get_json() or {}
@@ -199,18 +336,22 @@ def handle_workouts():
         return jsonify({"status": "success", "storage": "sqlite", "data": [record]}), 201
 
     if url and key:
-        rows, err = sb_request("GET", "workout_logs", "day_key=neq.__sync_state__&order=date.desc,id.desc")
+        rows, err = sb_request("GET", "workout_logs", "day_key=not.in.(__sync_state__,__pin_guard__)&order=date.desc,id.desc")
         if not err and rows is not None:
             return jsonify(rows)
 
     conn = get_db_connection()
-    rows = conn.execute("SELECT * FROM workout_logs WHERE day_key != '__sync_state__' ORDER BY date DESC, id DESC").fetchall()
+    rows = conn.execute("SELECT * FROM workout_logs WHERE day_key NOT IN ('__sync_state__', '__pin_guard__') ORDER BY date DESC, id DESC").fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
 
 
 @app.route("/api/workouts/<int:log_id>", methods=["DELETE"])
 def delete_workout(log_id):
+    pin_ok, pin_msg = verify_request_pin()
+    if not pin_ok:
+        return jsonify({"error": pin_msg, "pin_required": True}), 401
+
     url, key = get_supabase_creds()
     if url and key:
         _, err = sb_request("DELETE", "workout_logs", f"id=eq.{log_id}")
@@ -226,6 +367,10 @@ def delete_workout(log_id):
 
 @app.route("/api/weights", methods=["GET", "POST"])
 def handle_weights():
+    pin_ok, pin_msg = verify_request_pin()
+    if not pin_ok:
+        return jsonify({"error": pin_msg, "pin_required": True}), 401
+
     url, key = get_supabase_creds()
     if request.method == "POST":
         data = request.get_json() or {}
@@ -265,17 +410,15 @@ def handle_weights():
 
 @app.route("/api/state", methods=["GET", "POST"])
 def handle_state():
-    """
-    Menyinkronkan checklist gerakan harian, bonus overload, dan profil antar HP & Laptop.
-    Menyimpan state di dalam tabel workout_logs dengan day_key='__sync_state__' agar
-    bekerja otomatis tanpa perlu membuat tabel baru di Supabase!
-    """
+    pin_ok, pin_msg = verify_request_pin()
+    if not pin_ok:
+        return jsonify({"error": pin_msg, "pin_required": True}), 401
+
     url, key = get_supabase_creds()
     if request.method == "POST":
         data = request.get_json() or {}
         state_str = json.dumps(data)
         if url and key:
-            # Hapus state lama lalu masukkan state terbaru di workout_logs (day_key = '__sync_state__')
             sb_request("DELETE", "workout_logs", "day_key=eq.__sync_state__")
             dummy_row = {
                 "date": "2099-12-31",
