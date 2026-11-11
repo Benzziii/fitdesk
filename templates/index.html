@@ -60,69 +60,62 @@
 
   <!-- Top Navigation Header (Minimalist White & Blue + Secret Sync Key / PIN Button) -->
   <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
-    <!-- Baris 1: Brand & Aksi Cepat (Ringkas di Mobile & Desktop) -->
-    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2 flex items-center justify-between gap-2">
-      <div class="flex items-center gap-2 min-w-0">
-        <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-extrabold text-sm sm:text-base shrink-0 shadow-sm">
+    <!-- Baris 1: Brand & Aksi Cepat (1 Baris Proporsional, Anti-Meluber di Mobile) -->
+    <div class="max-w-7xl mx-auto px-2.5 sm:px-6 py-1.5 flex items-center justify-between gap-1.5">
+      <div class="flex items-center gap-1.5 min-w-0">
+        <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-extrabold text-xs sm:text-sm shrink-0 shadow-sm">
           FD
         </div>
-        <div class="min-w-0">
-          <div class="flex items-center gap-1.5">
-            <h1 class="text-sm sm:text-base font-extrabold tracking-tight text-slate-900 truncate">FitDesk Pro</h1>
-            <span id="backendStatusBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 truncate">
-              3kg×2 Cloud
-            </span>
-          </div>
-          <p class="text-[11px] text-slate-500 hidden sm:block truncate">Program Dumbbell 3 kg × 2, Perut Rata &amp; Cloud Sync</p>
-        </div>
+        <h1 class="text-xs sm:text-base font-extrabold tracking-tight text-slate-900 whitespace-nowrap">FitDesk</h1>
+        <span id="backendStatusBadge" class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300 whitespace-nowrap shrink-0">
+          🟢 Cloud
+        </span>
       </div>
 
-      <!-- Tombol Aksi Header (Kompak & Enak Ditekan di Mobile) -->
-      <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
-        <button id="pinSecurityBtn" onclick="openPinSecurityModal()" class="px-2 sm:px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[11px] font-bold text-indigo-700 transition flex items-center gap-1" title="PIN Keamanan Sinkronisasi">
+      <!-- Tombol Aksi Kanan (Proporsional di Layar HP 360px) -->
+      <div class="flex items-center gap-1 shrink-0">
+        <button id="pinSecurityBtn" onclick="openPinSecurityModal()" class="px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[11px] font-bold text-indigo-700 transition flex items-center gap-1 whitespace-nowrap" title="PIN Keamanan Sinkronisasi">
           <span id="pinLockIcon">🔐</span>
-          <span id="pinStatusLabel" class="max-w-[85px] sm:max-w-none truncate">PIN Sync: Aktif</span>
+          <span id="pinStatusLabel" class="text-[10px] sm:text-[11px]">PIN<span class="hidden lg:inline"> Sync: Aktif</span></span>
         </button>
-        <button id="cloudSyncBtn" onclick="syncFromCloud(true)" class="px-2 sm:px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[11px] font-semibold text-blue-700 transition flex items-center gap-1" title="Sinkronkan Cloud">
+        <button id="cloudSyncBtn" onclick="syncFromCloud(true)" class="px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[11px] font-semibold text-blue-700 transition flex items-center gap-1 whitespace-nowrap" title="Sinkronkan Cloud">
           <span>🔄</span>
           <span class="hidden md:inline">Sinkronkan Cloud</span>
         </button>
-        <div class="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-slate-100 border border-slate-200 text-[11px]">
-          <span class="w-2 h-2 rounded-full bg-rose-500 hr-beat"></span>
+        <div class="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[10px] sm:text-[11px] whitespace-nowrap">
+          <span class="w-1.5 h-1.5 rounded-full bg-rose-500 hr-beat"></span>
           <strong id="headerLiveBpm" class="text-slate-900 font-bold">76 BPM</strong>
         </div>
-        <button id="soundToggleBtn" onclick="toggleSound()" class="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-[11px] font-semibold text-slate-700 transition flex items-center gap-1" title="Suara Timer">
+        <button id="soundToggleBtn" onclick="toggleSound()" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-[11px] font-semibold text-slate-700 transition flex items-center gap-1 whitespace-nowrap" title="Suara Timer">
           <span id="soundIcon">🔔</span>
           <span id="soundLabel" class="hidden lg:inline">Suara Aktif</span>
         </button>
       </div>
     </div>
 
-    <!-- Baris 2: Sticky Timer Bar (1 Baris Geser di Mobile, Selalu Tampil Saat Scroll) -->
+    <!-- Baris 2: Sticky Timer Bar (Muat Utuh 100% di Layar HP Tanpa Kepotong) -->
     <div class="bg-gradient-to-r from-blue-700 via-blue-600 to-sky-600 text-white border-y border-blue-500">
-      <div class="max-w-7xl mx-auto px-3 sm:px-6 py-1.5 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
-        <div class="flex items-center gap-2 shrink-0">
-          <div class="flex items-center gap-1.5 bg-slate-950/35 px-2.5 py-0.5 rounded-lg border border-white/20">
-            <span class="text-[11px] font-bold text-sky-200">⏱️</span>
-            <span id="timerDisplay" class="text-base sm:text-xl font-extrabold font-mono text-white tracking-wider">01:00</span>
+      <div class="max-w-7xl mx-auto px-2 sm:px-6 py-1 flex items-center justify-between gap-1">
+        <div class="flex items-center gap-1 shrink-0">
+          <div class="flex items-center gap-1 bg-slate-950/35 px-2 py-0.5 rounded-md border border-white/20">
+            <span class="text-[10px] text-sky-200">⏱️</span>
+            <span id="timerDisplay" class="text-sm sm:text-lg font-extrabold font-mono text-white tracking-wider">01:00</span>
           </div>
-          <button id="timerStartPauseBtn" onclick="toggleTimer()" class="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-[11px] transition shadow-sm">
+          <button id="timerStartPauseBtn" onclick="toggleTimer()" class="px-2 py-0.5 rounded-md bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-[11px] transition shadow-sm">
             Mulai
           </button>
-          <button onclick="resetTimer()" class="px-2 py-1 rounded-lg bg-slate-900/30 hover:bg-slate-900/50 text-white text-[11px] font-semibold border border-white/20 transition">
+          <button onclick="resetTimer()" class="px-1.5 py-0.5 rounded-md bg-slate-900/30 hover:bg-slate-900/50 text-white text-[10px] sm:text-[11px] font-semibold border border-white/20 transition">
             Reset
           </button>
         </div>
 
         <div class="flex items-center gap-1 shrink-0">
-          <button onclick="setTimerPreset(30, 'Vacuum 30 dtk')" class="px-2 py-1 rounded-md bg-white/15 hover:bg-white/25 text-[11px] text-white font-bold border border-white/20 transition">30d Vacuum</button>
-          <button onclick="setTimerPreset(45, 'Istirahat 45 dtk')" class="px-2 py-1 rounded-md bg-white/15 hover:bg-white/25 text-[11px] text-white font-semibold border border-white/20 transition">45d</button>
-          <button onclick="setTimerPreset(60, 'Istirahat 60 dtk')" class="px-2 py-1 rounded-md bg-white/15 hover:bg-white/25 text-[11px] text-white font-semibold border border-white/20 transition">60d</button>
-          <button onclick="setTimerPreset(90, 'Istirahat 90 dtk')" class="px-2 py-1 rounded-md bg-white/15 hover:bg-white/25 text-[11px] text-white font-semibold border border-white/20 transition">90d</button>
-          <button onclick="setTimerPreset(300, 'Pemanasan 5 mnt')" class="px-2 py-1 rounded-md bg-white/15 hover:bg-white/25 text-[11px] text-white font-semibold border border-white/20 transition">5m</button>
-          <button onclick="playLoudAlarmSequence()" class="px-2 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-[11px] font-bold border border-white/25 transition" title="Tes Alarm Kencang">
-            🔊 Tes Alarm
-          </button>
+          <button onclick="setTimerPreset(30, 'Vacuum 30 dtk')" class="px-1.5 sm:px-2 py-0.5 rounded bg-white/15 hover:bg-white/25 text-[10px] sm:text-[11px] text-white font-bold border border-white/20 transition whitespace-nowrap">30d<span class="hidden sm:inline"> Vacuum</span></button>
+          <button onclick="setTimerPreset(45, 'Istirahat 45 dtk')" class="px-1.5 sm:px-2 py-0.5 rounded bg-white/15 hover:bg-white/25 text-[10px] sm:text-[11px] text-white font-semibold border border-white/20 transition">45d</button>
+          <button onclick="setTimerPreset(60, 'Istirahat 60 dtk')" class="px-1.5 sm:px-2 py-0.5 rounded bg-white/15 hover:bg-white/25 text-[10px] sm:text-[11px] text-white font-semibold border border-white/20 transition">60d</button>
+          <button onclick="setTimerPreset(90, 'Istirahat 90 dtk')" class="px-1.5 sm:px-2 py-0.5 rounded bg-white/15 hover:bg-white/25 text-[10px] sm:text-[11px] text-white font-semibold border border-white/20 transition">90d</button>
+          <button onclick="setTimerPreset(300, 'Pemanasan 5 mnt')" class="px-1.5 sm:px-2 py-0.5 rounded bg-white/15 hover:bg-white/25 text-[10px] sm:text-[11px] text-white font-semibold border border-white/20 transition">5m</button>
+          <button onclick="playLoudAlarmSequence()" class="px-1.5 sm:px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 text-white text-[10px] sm:text-[11px] font-bold border border-white/25 transition" title="Tes Alarm Kencang">🔊<span class="hidden sm:inline"> Tes Alarm</span></button>
         </div>
 
         <div class="hidden xl:flex items-center gap-2 shrink-0 text-right">
@@ -132,26 +125,26 @@
       </div>
     </div>
 
-    <!-- Baris 3: Menu Utama (Swipeable di Mobile, Padat & Jelas) -->
-    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-1.5 overflow-x-auto no-scrollbar">
-      <nav class="flex items-center gap-1 min-w-max" aria-label="Main Navigation">
-        <button id="tabBtn-daily" onclick="switchTab('daily')" class="tab-btn tab-btn-active px-3 py-1.5 rounded-lg text-xs font-semibold transition">
-          📅 1. Jadwal &amp; Gerakan Harian
+    <!-- Baris 3: 6 Menu Utama (Grid 6 Kolom Pas di Layar HP — Tidak Ada yang Kepotong!) -->
+    <div class="max-w-7xl mx-auto px-2 sm:px-6 py-1">
+      <nav class="grid grid-cols-6 gap-1" aria-label="Main Navigation">
+        <button id="tabBtn-daily" onclick="switchTab('daily')" class="tab-btn tab-btn-active px-1 sm:px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold text-center truncate transition">
+          📅 <span class="hidden md:inline">1. </span>Jadwal<span class="hidden lg:inline"> &amp; Gerakan Harian</span>
         </button>
-        <button id="tabBtn-history" onclick="switchTab('history')" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">
-          📊 2. Log Historis &amp; Overload
+        <button id="tabBtn-history" onclick="switchTab('history')" class="tab-btn px-1 sm:px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold text-slate-600 hover:bg-slate-100 text-center truncate transition">
+          📊 <span class="hidden md:inline">2. </span>Log<span class="hidden lg:inline"> Historis &amp; Overload</span>
         </button>
-        <button id="tabBtn-smartwatch" onclick="switchTab('smartwatch')" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">
-          ⌚ 3. Smartwatch &amp; Sensor
+        <button id="tabBtn-smartwatch" onclick="switchTab('smartwatch')" class="tab-btn px-1 sm:px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold text-slate-600 hover:bg-slate-100 text-center truncate transition">
+          ⌚ <span class="hidden md:inline">3. Smartwatch &amp; </span>Sensor
         </button>
-        <button id="tabBtn-weight" onclick="switchTab('weight')" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">
-          ⚖️ 4. Konsultasi Berat Badan
+        <button id="tabBtn-weight" onclick="switchTab('weight')" class="tab-btn px-1 sm:px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold text-slate-600 hover:bg-slate-100 text-center truncate transition">
+          ⚖️ <span class="hidden md:inline">4. Konsultasi </span>Berat<span class="hidden lg:inline"> Badan</span>
         </button>
-        <button id="tabBtn-ergo" onclick="switchTab('ergo')" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">
-          🏍️ 5. Postur Kerja, Motor &amp; Futsal
+        <button id="tabBtn-ergo" onclick="switchTab('ergo')" class="tab-btn px-1 sm:px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold text-slate-600 hover:bg-slate-100 text-center truncate transition">
+          🏍️ <span class="hidden md:inline">5. </span>Postur<span class="hidden lg:inline"> Kerja, Motor &amp; Futsal</span>
         </button>
-        <button id="tabBtn-flask" onclick="switchTab('flask')" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">
-          🐍 6. Kode Flask &amp; Deployment
+        <button id="tabBtn-flask" onclick="switchTab('flask')" class="tab-btn px-1 sm:px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold text-slate-600 hover:bg-slate-100 text-center truncate transition">
+          🐍 <span class="hidden md:inline">6. Kode </span>Flask<span class="hidden lg:inline"> &amp; Deployment</span>
         </button>
       </nav>
     </div>
@@ -259,7 +252,7 @@
       </div>
 
       <!-- Day Selector Pills (Senin - Minggu) -->
-      <div class="flex sm:grid sm:grid-cols-4 lg:grid-cols-7 gap-2 overflow-x-auto no-scrollbar pb-1" id="daySelectorGrid"></div>
+      <div class="grid grid-cols-7 gap-1 sm:gap-2" id="daySelectorGrid"></div>
 
       <!-- Selected Day Overview & Overload Recommendation Banner -->
       <div class="glass-card rounded-2xl p-5 sm:p-6 space-y-5">
@@ -1043,11 +1036,11 @@ gunicorn==23.0.0</code></pre>
       const bannerBadge = document.getElementById('bannerPinBadge');
       const icon = document.getElementById('pinLockIcon');
       if (activeSyncPin) {
-        if (lbl) lbl.textContent = 'PIN: ' + maskPinDisplay(activeSyncPin);
+        if (lbl) lbl.innerHTML = 'PIN<span class="hidden lg:inline">: ' + maskPinDisplay(activeSyncPin) + '</span>';
         if (bannerBadge) bannerBadge.textContent = 'Key Aktif: ' + maskPinDisplay(activeSyncPin);
         if (icon) icon.textContent = '🔐';
       } else {
-        if (lbl) lbl.textContent = 'Atur PIN Sync';
+        if (lbl) lbl.innerHTML = 'PIN<span class="hidden lg:inline">: ' + maskPinDisplay(activeSyncPin) + '</span>';
         if (bannerBadge) bannerBadge.textContent = 'PIN Belum Dikunci';
         if (icon) icon.textContent = '🔓';
       }
@@ -1885,12 +1878,13 @@ gunicorn==23.0.0</code></pre>
         const activeCls = isActive
           ? 'day-pill-active'
           : 'bg-white text-slate-700 border-slate-200 hover:bg-blue-50/50 hover:border-blue-200';
-        return `<button onclick="selectDay('${dk}')" class="min-w-[120px] sm:min-w-0 shrink-0 p-2.5 sm:p-3 rounded-xl border text-left transition flex flex-col justify-between ${activeCls}">
-          <div class="flex items-center justify-between w-full">
-            <span class="text-xs font-extrabold uppercase tracking-wider">${d.dayName}</span>
-            <span class="text-[10px] opacity-90">${dk === 'rabu' ? '🌳 Cardio' : '💪 4 Sisi'}</span>
+        const shortDay = d.dayName.slice(0, 3);
+        return `<button onclick="selectDay('${dk}')" class="p-1.5 sm:p-2.5 rounded-xl border text-center sm:text-left transition flex flex-col items-center sm:items-start justify-between ${activeCls}">
+          <div class="flex items-center justify-center sm:justify-between w-full">
+            <span class="text-[10px] sm:text-xs font-extrabold uppercase">${shortDay}<span class="hidden sm:inline">${d.dayName.slice(3)}</span></span>
+            <span class="hidden sm:inline text-[10px] opacity-90">${dk === 'rabu' ? '🌳' : '💪'}</span>
           </div>
-          <p class="text-xs font-medium mt-1 truncate">${d.shortFocus}</p>
+          <p class="text-[9px] sm:text-[11px] font-medium mt-0.5 truncate w-full">${d.shortFocus.split(' ')[0]}</p>
         </button>`;
       }).join('');
     }
@@ -1990,7 +1984,7 @@ gunicorn==23.0.0</code></pre>
 
           <div class="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-slate-200">
             <a href="${ex.videoUrl}" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-blue-600 hover:text-blue-800 underline flex items-center gap-1">
-              🎬 ${ex.videoLabel} ↗
+              🎬 Panduan Video ↗
             </a>
             <div class="flex items-center gap-1.5">
               ${ex.restSec > 0 ? `<button onclick="setTimerPreset(${ex.restSec}, 'Istirahat: ${ex.name} - ${ex.restSec} dtk')" class="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 font-medium border border-slate-200 transition">⏱️ Istirahat ${ex.restSec}d</button>` : ''}
@@ -2726,16 +2720,16 @@ gunicorn==23.0.0</code></pre>
         fetch('/api/status', { headers: getAuthHeaders() }).then(function (r) { return r.json(); }).then(function (stInfo) {
           if (stInfo && stInfo.pin_protected && !stInfo.pin_verified) {
             if (badge) {
-              badge.textContent = '🔒 Terkunci (Masukkan Secret Sync Key)';
-              badge.className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300';
+              badge.textContent = '🔒 Terkunci';
+              badge.className = 'text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300 whitespace-nowrap shrink-0';
             }
             openPinSecurityModal(stInfo.reason || 'Masukkan Secret Sync Key / PIN untuk membuka data Cloud Anda.');
             return;
           }
           if (stInfo && stInfo.cloud_connected) {
             if (badge) {
-              badge.textContent = '🟢 Supabase Cloud Aktif (HP ↔ Desktop Sinkron)';
-              badge.className = 'text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300';
+              badge.textContent = '🟢 Cloud';
+              badge.className = 'text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300 whitespace-nowrap shrink-0';
             }
           }
         }).catch(function () {});
