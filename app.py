@@ -7,7 +7,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_from_directory
 
 load_dotenv()
 
@@ -151,6 +151,38 @@ def verify_request_pin():
     if hash_pin(client_pin) != stored_hash:
         return False, "Secret Sync Key / PIN tidak cocok! Masukkan PIN yang sama seperti di perangkat utama Anda."
     return True, ""
+
+
+
+@app.route("/favicon.ico")
+def favicon_ico():
+    return send_from_directory(os.path.join(app.root_path, "static"), "favicon.ico", mimetype="image/vnd.microsoft.icon")
+
+
+@app.route("/favicon.png")
+def favicon_png():
+    return send_from_directory(os.path.join(app.root_path, "static"), "favicon.png", mimetype="image/png")
+
+
+@app.route("/apple-touch-icon.png")
+@app.route("/apple-touch-icon-precomposed.png")
+def apple_touch_icon():
+    return send_from_directory(os.path.join(app.root_path, "static"), "apple-touch-icon.png", mimetype="image/png")
+
+
+@app.route("/icon-192.png")
+def icon_192():
+    return send_from_directory(os.path.join(app.root_path, "static"), "icon-192.png", mimetype="image/png")
+
+
+@app.route("/icon-512.png")
+def icon_512():
+    return send_from_directory(os.path.join(app.root_path, "static"), "icon-512.png", mimetype="image/png")
+
+
+@app.route("/manifest.json")
+def web_manifest():
+    return send_from_directory(os.path.join(app.root_path, "static"), "manifest.json", mimetype="application/manifest+json")
 
 
 @app.route("/")

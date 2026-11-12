@@ -1,0 +1,25 @@
+{
+  "name": "FitDesk Pro — Dumbbell 3kg×2 & Cloud Tracker",
+  "short_name": "FitDesk Pro",
+  "description": "Program Latihan Dumbbell 3kg×2, Perut Rata & Cloud Sync",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
