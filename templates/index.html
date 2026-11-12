@@ -183,6 +183,9 @@
               <button onclick="lockScreenNow()" class="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-semibold text-[11px] transition">
                 🔒 Kunci Layar
               </button>
+              <button id="pwaInstallBtn" onclick="triggerInstallPwa()" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition shadow-sm">
+                📲 Install App
+              </button>
             </div>
           </div>
 
@@ -2828,6 +2831,30 @@ gunicorn==23.0.0</code></pre>
           }
         }).catch(function () {});
       } catch (e) {}
+    }
+
+    
+    // Android / Desktop PWA Install Prompt & Service Worker Registration
+    let deferredPwaPrompt = null;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      deferredPwaPrompt = e;
+      const btn = document.getElementById('pwaInstallBtn');
+      if (btn) btn.classList.remove('hidden');
+    });
+
+    function triggerInstallPwa() {
+      if (deferredPwaPrompt) {
+        deferredPwaPrompt.prompt();
+        deferredPwaPrompt.userChoice.then(function (choice) {
+          if (choice.outcome === 'accepted') {
+            showToast('🎉 FitDesk Pro sedang di-install sebagai Aplikasi di HP Anda!', 'info');
+          }
+          deferredPwaPrompt = null;
+        });
+      } else {
+        showToast('📲 Di Chrome Android: klik menu ⋮ (pojok kanan atas) lalu pilih "Instal aplikasi" / "Tambahkan ke layar utama". Di Safari iPhone: klik Share lalu "Add to Home Screen".', 'info');
+      }
     }
 
     // Initialize on Window Load

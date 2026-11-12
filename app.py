@@ -180,6 +180,15 @@ def icon_512():
     return send_from_directory(os.path.join(app.root_path, "static"), "icon-512.png", mimetype="image/png")
 
 
+
+@app.route("/sw.js")
+def service_worker():
+    resp = send_from_directory(os.path.join(app.root_path, "static"), "sw.js", mimetype="application/javascript")
+    resp.headers["Service-Worker-Allowed"] = "/"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
 @app.route("/manifest.json")
 def web_manifest():
     return send_from_directory(os.path.join(app.root_path, "static"), "manifest.json", mimetype="application/manifest+json")
