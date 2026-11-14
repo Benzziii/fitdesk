@@ -3085,6 +3085,43 @@ gunicorn==23.0.0</code></pre>
       }
     }
 
+    function getUpcomingExerciseAndSetInfo() {
+      const d = SCHEDULE_DATA[selectedDayKey];
+      if (!d || !d.exercises) return null;
+      const filtered = d.exercises.filter(function (ex) {
+        return currentWeekFilter === 'all' || ex.weekTag === currentWeekFilter;
+      });
+      if (filtered.length === 0) return null;
+
+      let idx = Math.min(Math.max(0, currentFocusIndex), filtered.length - 1);
+      let ex = filtered[idx];
+      if (!ex || completedExercisesMap[ex.id]) {
+        const firstUndone = filtered.findIndex(function (e) { return !completedExercisesMap[e.id]; });
+        if (firstUndone !== -1) {
+          idx = firstUndone;
+          ex = filtered[idx];
+        }
+      }
+      if (!ex) return null;
+
+      const totalSets = parseTotalSets(ex.sets);
+      const doneSets = completedExercisesMap[ex.id] ? totalSets : Math.min(totalSets, completedSetsMap[ex.id] || 0);
+      const nextSetNum = Math.min(totalSets, doneSets + 1);
+      const cleanName = ex.name.replace(/\(.*?\)/g, '').trim();
+      const allDone = filtered.every(function (e) { return !!completedExercisesMap[e.id]; });
+
+      return {
+        ex: ex,
+        idx: idx,
+        totalExercises: filtered.length,
+        cleanName: cleanName,
+        doneSets: doneSets,
+        nextSetNum: nextSetNum,
+        totalSets: totalSets,
+        allDone: allDone
+      };
+    }
+
     function speakCurrentExerciseGuide(idx) {
       const d = SCHEDULE_DATA[selectedDayKey];
       if (!d) return;
@@ -3204,12 +3241,19 @@ gunicorn==23.0.0</code></pre>
 
       const doneSets = completedSetsMap[exId] || 0;
       const activeSetNum = Math.min(totalSets, doneSets + 1);
+      const cleanExName = String(safeName || '').replace(/\(.*?\)/g, '').trim() || 'gerakan ini';
 
       renderSelectedDayDetails();
       if (isAutoTriggered) {
-        speakCoach('Waktu istirahat selesai. Mulai Set ke-' + activeSetNum + '. Turun tiga detik.', true);
+        speakCoach(
+          'Waktu istirahat selesai. Mulai ' + cleanExName + ', Set ke-' + activeSetNum + ' dari ' + totalSets + '. Turun tiga detik.',
+          true
+        );
       } else {
-        speakCoach('Mulai Set ke-' + activeSetNum + ', tempo tiga satu dua. Turun tiga detik.', true);
+        speakCoach(
+          'Mulai ' + cleanExName + ', Set ke-' + activeSetNum + ' dari ' + totalSets + ', tempo tiga satu dua. Turun tiga detik.',
+          true
+        );
       }
       playBeep(440, 90, 0.65);
       updateMetronomeLiveDom();
@@ -3332,11 +3376,24 @@ gunicorn==23.0.0</code></pre>
           if (currentTimerCategory === 'vacuum') {
             speakCoach('Sepuluh detik lagi, pertahankan perut tetap kencang.', true);
           } else if (currentTimerCategory === 'warmup') {
-            speakCoach('Pemanasan tinggal sepuluh detik lagi.', true);
+            const nextInfo = getUpcomingExerciseAndSetInfo();
+            if (nextInfo) {
+              speakCoach('Pemanasan sepuluh detik lagi. Bersiap untuk ' + nextInfo.cleanName + ', Set ke-' + nextInfo.nextSetNum + ' dari ' + nextInfo.totalSets + '.', true);
+            } else {
+              speakCoach('Pemanasan tinggal sepuluh detik lagi.', true);
+            }
           } else if (currentTimerCategory === 'cooldown') {
             speakCoach('Sepuluh detik lagi sebelum peregangan selesai.', true);
           } else {
-            speakCoach('Sepuluh detik lagi, bersiap angkat dumbbell.', true);
+            const nextInfo = getUpcomingExerciseAndSetInfo();
+            if (nextInfo && !nextInfo.allDone) {
+              speakCoach(
+                'Sepuluh detik lagi. Bersiap untuk ' + nextInfo.cleanName + ', Set ke-' + nextInfo.nextSetNum + ' dari ' + nextInfo.totalSets + '.',
+                true
+              );
+            } else {
+              speakCoach('Sepuluh detik lagi.', true);
+            }
           }
         } else if (txt === '00:03') {
           speakCoach('Tiga', true);
@@ -3358,7 +3415,15 @@ gunicorn==23.0.0</code></pre>
         } else if (currentTimerCategory === 'warmup') {
           if (voiceCoachEnabled && soundEnabled) {
             setTimeout(function () {
-              speakCoach('Waktu pemanasan selesai. Tubuh sudah siap, mari mulai set pertama!', false);
+              const nextInfo = getUpcomingExerciseAndSetInfo();
+              if (nextInfo) {
+                speakCoach(
+                  'Waktu pemanasan selesai. Sekarang mulai Gerakan pertama: ' + nextInfo.cleanName + ', Set ke-' + nextInfo.nextSetNum + ' dari ' + nextInfo.totalSets + '.',
+                  false
+                );
+              } else {
+                speakCoach('Waktu pemanasan selesai. Tubuh sudah siap, mari mulai latihan!', false);
+              }
             }, 1200);
           }
         } else if (currentTimerCategory === 'cooldown') {
@@ -3376,7 +3441,15 @@ gunicorn==23.0.0</code></pre>
             }, 1800);
           } else if (voiceCoachEnabled && soundEnabled) {
             setTimeout(function () {
-              speakCoach('Waktu istirahat selesai. Ayo mulai set berikutnya!', false);
+              const nextInfo = getUpcomingExerciseAndSetInfo();
+              if (nextInfo && !nextInfo.allDone) {
+                speakCoach(
+                  'Waktu istirahat selesai. Sekarang giliran ' + nextInfo.cleanName + ', Set ke-' + nextInfo.nextSetNum + ' dari ' + nextInfo.totalSets + '. Silakan mulai!',
+                  false
+                );
+              } else {
+                speakCoach('Waktu istirahat selesai!', false);
+              }
             }, 1200);
           }
         }
@@ -3451,9 +3524,10 @@ gunicorn==23.0.0</code></pre>
         renderSelectedDayDetails();
         pushStateToCloud(false);
 
+        const cleanExName = String(exName || '').replace(/\(.*?\)/g, '').trim() || 'gerakan ini';
         const autoNote = (handsFreeAutoStart && handsFreeSessionActive)
-          ? ' Set ke-' + (doneSets + 1) + ' akan dimulai otomatis setelah istirahat.'
-          : ' Bersiap untuk Set ke-' + (doneSets + 1) + ' dari ' + totalSets + '.';
+          ? ' Selanjutnya ' + cleanExName + ' Set ke-' + (doneSets + 1) + ' dari ' + totalSets + ' akan dimulai otomatis setelah istirahat.'
+          : ' Selanjutnya ' + cleanExName + ', Set ke-' + (doneSets + 1) + ' dari ' + totalSets + '.';
         speakCoach(
           'Set ke-' + doneSets + ' selesai. Istirahat ' + waitSec + ' detik.' + autoNote,
           true
