@@ -92,6 +92,7 @@
 
       <!-- Tombol Aksi Kanan (Proporsional di Layar HP 360px) -->
       <div class="flex items-center gap-1 shrink-0">
+        <button id="openProfilerHeaderBtn" onclick="openUserProfilerModal()" class="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-[11px] font-bold text-emerald-800 transition flex items-center gap-1 whitespace-nowrap" title="Kustomisasi Profil Pekerjaan, Komuter & Alat"><span>👤</span><span id="headerProfileShortLabel" class="text-[10px] sm:text-[11px]">Profil</span></button>
         <button id="pinSecurityBtn" onclick="openPinSecurityModal()" class="px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[11px] font-bold text-indigo-700 transition flex items-center gap-1 whitespace-nowrap" title="PIN Keamanan Sinkronisasi">
           <span id="pinLockIcon">🔐</span>
           <span id="pinStatusLabel" class="text-[10px] sm:text-[11px]">PIN<span class="hidden lg:inline"> Sync: Aktif</span></span>
@@ -992,6 +993,114 @@ gunicorn==23.0.0</code></pre>
       <div class="flex items-center justify-end gap-2 pt-2">
         <button onclick="closeCompleteDayModal()" class="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 font-semibold">Batal</button>
         <button onclick="confirmCompleteDaySession()" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm">Simpan ke Riwayat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 3: SMART USER PROFILING WIZARD (USIA, KERJA, KOMUTER & ALAT)    -->
+  <!-- ===================================================================== -->
+  <div id="userProfilerModal" class="fixed inset-0 z-50 hidden bg-slate-900/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="glass-card rounded-2xl max-w-2xl w-full p-4 sm:p-6 space-y-4 border border-blue-200 shadow-2xl my-auto max-h-[92vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-2 border-b border-slate-200 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center text-base font-bold shrink-0">
+            🎯
+          </div>
+          <div>
+            <h3 class="text-base sm:text-lg font-extrabold text-slate-900">Smart Fitness &amp; Commuter Profiler</h3>
+            <p class="text-[11px] text-slate-500">Personalisasi otomatis program otot, postur kerja, de-kompresi perjalanan &amp; alat latihan</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeUserProfilerModal()" class="text-slate-400 hover:text-slate-700 text-sm font-bold px-2 py-1">✕</button>
+      </div>
+
+      <!-- Preset Cepat (1-Klik) -->
+      <div class="p-3 rounded-xl bg-blue-50/70 border border-blue-200 space-y-2">
+        <span class="text-[11px] font-extrabold uppercase tracking-wider text-blue-800 block">⚡ Pilih Preset Cepat (Opsional):</span>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <button type="button" onclick="applyProfilerPreset('commuter_desk')" class="p-2 rounded-xl bg-white hover:bg-blue-50 border border-blue-200 text-left transition">
+            <p class="text-xs font-extrabold text-slate-900">🏍️ Pekerja Kantoran + Motor</p>
+            <p class="text-[10px] text-slate-500">Duduk 8–9 jam, Motor 60–90m PP, Dumbbell 3kg×2</p>
+          </button>
+          <button type="button" onclick="applyProfilerPreset('teacher_standing')" class="p-2 rounded-xl bg-white hover:bg-blue-50 border border-blue-200 text-left transition">
+            <p class="text-xs font-extrabold text-slate-900">🏫 Guru / Aktif Berdiri</p>
+            <p class="text-[10px] text-slate-500">Berdiri mengajar 6–8 jam, Fokus betis, pinggang &amp; stamina</p>
+          </button>
+          <button type="button" onclick="applyProfilerPreset('wfh_bodyweight')" class="p-2 rounded-xl bg-white hover:bg-blue-50 border border-blue-200 text-left transition">
+            <p class="text-xs font-extrabold text-slate-900">🏠 WFH / Tanpa Alat</p>
+            <p class="text-[10px] text-slate-500">Duduk di rumah, variasi Bodyweight &amp; pembakar lemak</p>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">1. Nama Panggilan / Profil</label>
+          <input id="profNameInput" type="text" value="Beni" placeholder="Contoh: Beni" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900" />
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">2. Usia &amp; Target Utama</label>
+          <div class="grid grid-cols-3 gap-2">
+            <input id="profAgeInput" type="number" min="15" max="80" value="33" class="col-span-1 bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 text-center" title="Usia (Tahun)" />
+            <select id="profGoalSelect" class="col-span-2 bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-900">
+              <option value="recomp_waist">🔥 Perut Rata &amp; Bentuk Otot 360°</option>
+              <option value="posture_relief">🧘 Bebas Pegal Pinggang &amp; Postur</option>
+              <option value="muscle_tone">💪 Fokus Kencangkan Otot &amp; Stamina</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">3. Kegiatan / Posisi Kerja Harian</label>
+          <select id="profWorkStyleSelect" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900">
+            <option value="desk_8h">💺 Duduk Lama di Depan Komputer (6–9 Jam/Hari)</option>
+            <option value="standing_active">🏫 Berdiri Lama / Mengajar / Medis (5–8 Jam/Hari)</option>
+            <option value="field_mobile">🚶 Mobile Lapangan / Berpindah-pindah</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">4. Moda Perjalanan ke Kantor &amp; Macet</label>
+          <select id="profCommuteModeSelect" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900">
+            <option value="motorcycle">🏍️ Sepeda Motor (Rawan Kompresi Pinggang &amp; Bahu)</option>
+            <option value="public_standing">🚆 Berdiri di KRL / TransJakarta / Bus</option>
+            <option value="car_driving">🚗 Mengemudi Mobil di Kemacetan</option>
+            <option value="wfh_walk">🏠 WFH / Jalan Kaki Dekat (&lt;15 Menit)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">5. Total Durasi Perjalanan PP (Menit/Hari)</label>
+          <input id="profCommuteMinInput" type="number" min="0" max="300" step="5" value="90" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900" />
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">6. Ketersediaan Alat Latihan di Rumah</label>
+          <select id="profEquipmentSelect" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900">
+            <option value="dumbbell_3kg">🏋️ Sepasang Dumbbell Ringan (2–3 kg × 2 = 6 kg)</option>
+            <option value="bodyweight_only">🤸 Tanpa Alat (Bodyweight, Kursi &amp; Matras Saja)</option>
+            <option value="dumbbell_heavy">💪 Dumbbell Sedang / Adjustable (5–12 kg × 2)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Preview Rekomendasi Otomatis dari Engine -->
+      <div id="profilerLivePreviewBox" class="p-3.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-xs text-slate-700 space-y-1.5 leading-relaxed">
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200">
+        <button type="button" onclick="manualResetWeeklyChecklist()" class="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition">
+          🔄 Reset Checklist Minggu Baru Sekarang
+        </button>
+        <div class="flex items-center gap-2 ml-auto">
+          <button type="button" onclick="closeUserProfilerModal()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 font-semibold">
+            Batal
+          </button>
+          <button type="button" onclick="saveUserProfileFromModal()" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-md transition">
+            ✅ Simpan &amp; Terapkan Profil Saya
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -2899,6 +3008,248 @@ gunicorn==23.0.0</code></pre>
       } catch (e) {}
     }
 
+    
+    // -------------------------------------------------------------------------
+    // 0. AUTO-RESET MINGGUAN (ISO WEEK ROLLOVER) & SMART USER PROFILER ENGINE
+    // -------------------------------------------------------------------------
+    const DEFAULT_USER_PROFILE = {
+      name: 'Beni',
+      age: 33,
+      goal: 'recomp_waist',
+      workStyle: 'desk_8h',
+      commuteMode: 'motorcycle',
+      commuteMinutes: 90,
+      equipment: 'dumbbell_3kg',
+      updatedAt: '2026-11-14'
+    };
+
+    let userProfile = Object.assign({}, DEFAULT_USER_PROFILE);
+    try {
+      const savedProfRaw = safeStorageGet('fitdesk_user_profile_v1', '');
+      if (savedProfRaw) {
+        userProfile = Object.assign({}, DEFAULT_USER_PROFILE, JSON.parse(savedProfRaw) || {});
+      }
+    } catch (e) {
+      userProfile = Object.assign({}, DEFAULT_USER_PROFILE);
+    }
+
+    function getCurrentIsoWeekKey() {
+      const now = new Date();
+      const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return d.getUTCFullYear() + '-W' + String(weekNo).padStart(2, '0');
+    }
+
+    let activeIsoWeekKey = safeStorageGet('fitdesk_active_iso_week_v1', '');
+
+    function checkAndApplyWeeklyAutoReset() {
+      const currentWeekKey = getCurrentIsoWeekKey();
+      if (!activeIsoWeekKey) {
+        activeIsoWeekKey = currentWeekKey;
+        safeStorageSet('fitdesk_active_iso_week_v1', activeIsoWeekKey);
+        return false;
+      }
+      if (activeIsoWeekKey !== currentWeekKey) {
+        const prevWeek = activeIsoWeekKey;
+        activeIsoWeekKey = currentWeekKey;
+        completedSetsMap = {};
+        completedExercisesMap = {};
+        saveCompletedSets();
+        safeStorageSet('fitdesk_completed_exercises_v4', JSON.stringify(completedExercisesMap));
+        safeStorageSet('fitdesk_active_iso_week_v1', activeIsoWeekKey);
+        currentFocusIndex = 0;
+        pushStateToCloud(false);
+        setTimeout(function () {
+          showToast(
+            '🗓️ Memasuki Minggu Baru (' + currentWeekKey + ' dari ' + prevWeek + ')! Seluruh status selesai & set latihan telah di-reset otomatis untuk siklus minggu ini.',
+            'info'
+          );
+        }, 400);
+        return true;
+      }
+      return false;
+    }
+
+    function manualResetWeeklyChecklist() {
+      stopTempoMetronome(true, false);
+      handsFreeSessionActive = false;
+      completedSetsMap = {};
+      completedExercisesMap = {};
+      activeIsoWeekKey = getCurrentIsoWeekKey();
+      saveCompletedSets();
+      safeStorageSet('fitdesk_completed_exercises_v4', JSON.stringify(completedExercisesMap));
+      safeStorageSet('fitdesk_active_iso_week_v1', activeIsoWeekKey);
+      currentFocusIndex = 0;
+      renderSelectedDayDetails();
+      pushStateToCloud(false);
+      closeUserProfilerModal();
+      showToast('🔄 Seluruh checklist set minggu ini (' + activeIsoWeekKey + ') berhasil di-reset ke 0!', 'info');
+    }
+
+    function getProfileAdaptationDetails(prof) {
+      const p = prof || userProfile;
+      let workLabel = '💺 Duduk 6–9 Jam';
+      let workAdvice = 'Sisipkan Micro-Break berdiri 2 menit setiap 60 menit duduk & aktifkan Stomach Vacuum untuk mengoreksi panggul miring ke depan (Anterior Pelvic Tilt).';
+      if (p.workStyle === 'standing_active') {
+        workLabel = '🏫 Aktif Berdiri / Mengajar';
+        workAdvice = 'Fokus pelepasan ketegangan betis (Calf Stretch), sirkulasi pergelangan kaki, dan penguatan core penyangga pinggang.';
+      } else if (p.workStyle === 'field_mobile') {
+        workLabel = '🚶 Mobile / Lapangan';
+        workAdvice = 'Fokus stabilitas sendi lutut, keseimbangan panggul, dan hidrasi elektrolit.';
+      }
+
+      let commuteLabel = '🏍️ Motor (' + (p.commuteMinutes || 60) + 'm PP)';
+      let commuteAdvice = 'Wajib lakukan De-kompresi Lumbar L4–L5 (Child Pose & Cat-Cow) serta peregangan bahu atas selama 3 menit sepulang berkendara.';
+      if (p.commuteMode === 'public_standing') {
+        commuteLabel = '🚆 KRL / Bus (' + (p.commuteMinutes || 60) + 'm PP)';
+        commuteAdvice = 'Tambahkan peregangan Hamstring & rotasi punggung atas (Thoracic Extension) untuk melepas kaku akibat berdiri menahan guncangan.';
+      } else if (p.commuteMode === 'car_driving') {
+        commuteLabel = '🚗 Mobil (' + (p.commuteMinutes || 60) + 'm PP)';
+        commuteAdvice = 'Fokus Kneeling Hip Flexor Stretch (2 menit) untuk membuka lipatan paha yang terkunci saat menginjak pedal di kemacetan.';
+      } else if (p.commuteMode === 'wfh_walk') {
+        commuteLabel = '🏠 WFH / Jalan Kaki';
+        commuteAdvice = 'Karena minim perjalanan harian, pastikan target jalan cepat Zone 2 minimal 5.500–7.000 langkah terpenuhi.';
+      }
+
+      let equipLabel = '🏋️ Dumbbell 3 kg × 2';
+      if (p.equipment === 'bodyweight_only') {
+        equipLabel = '🤸 Tanpa Alat (Bodyweight)';
+      } else if (p.equipment === 'dumbbell_heavy') {
+        equipLabel = '💪 Dumbbell 5–12 kg';
+      }
+
+      const maxHr = 220 - (parseInt(p.age, 10) || 33);
+      const z2Low = Math.round(maxHr * 0.60);
+      const z2High = Math.round(maxHr * 0.70);
+
+      return {
+        workLabel: workLabel,
+        workAdvice: workAdvice,
+        commuteLabel: commuteLabel,
+        commuteAdvice: commuteAdvice,
+        equipLabel: equipLabel,
+        z2Low: z2Low,
+        z2High: z2High
+      };
+    }
+
+    function adaptWeightRecommendation(origWeightRec) {
+      if (userProfile.equipment === 'bodyweight_only') {
+        if (String(origWeightRec).toLowerCase().indexOf('bodyweight') !== -1) return origWeightRec;
+        return 'Tanpa Alat (Bodyweight + Tahan Puncak Kontraksi 3 Detik)';
+      }
+      if (userProfile.equipment === 'dumbbell_heavy') {
+        if (String(origWeightRec).toLowerCase().indexOf('bodyweight') !== -1) return origWeightRec;
+        return 'Dumbbell 5–10 kg (Sesuaikan Beban Moderasi 10–12 Rep)';
+      }
+      return origWeightRec;
+    }
+
+    function updateProfilerLivePreview() {
+      const box = document.getElementById('profilerLivePreviewBox');
+      if (!box) return;
+      const tempProf = {
+        name: (document.getElementById('profNameInput') || {}).value || 'Beni',
+        age: parseInt((document.getElementById('profAgeInput') || {}).value, 10) || 33,
+        goal: (document.getElementById('profGoalSelect') || {}).value || 'recomp_waist',
+        workStyle: (document.getElementById('profWorkStyleSelect') || {}).value || 'desk_8h',
+        commuteMode: (document.getElementById('profCommuteModeSelect') || {}).value || 'motorcycle',
+        commuteMinutes: parseInt((document.getElementById('profCommuteMinInput') || {}).value, 10) || 90,
+        equipment: (document.getElementById('profEquipmentSelect') || {}).value || 'dumbbell_3kg'
+      };
+      const ad = getProfileAdaptationDetails(tempProf);
+      box.innerHTML = `
+        <p class="font-extrabold text-emerald-900">✨ Hasil Kalibrasi Otomatis untuk ${tempProf.name} (${tempProf.age} thn • Zone 2: ${ad.z2Low}–${ad.z2High} BPM):</p>
+        <p>• <strong>Kompensasi Kerja (${ad.workLabel}):</strong> ${ad.workAdvice}</p>
+        <p>• <strong>Protokol Komuter (${ad.commuteLabel}):</strong> ${ad.commuteAdvice}</p>
+        <p>• <strong>Mode Beban (${ad.equipLabel}):</strong> Seluruh kartu gerakan otomatis disesuaikan dengan alat Anda.</p>
+      `;
+    }
+
+    function applyProfilerPreset(presetKey) {
+      if (presetKey === 'commuter_desk') {
+        document.getElementById('profNameInput').value = 'Beni';
+        document.getElementById('profAgeInput').value = 33;
+        document.getElementById('profGoalSelect').value = 'recomp_waist';
+        document.getElementById('profWorkStyleSelect').value = 'desk_8h';
+        document.getElementById('profCommuteModeSelect').value = 'motorcycle';
+        document.getElementById('profCommuteMinInput').value = 90;
+        document.getElementById('profEquipmentSelect').value = 'dumbbell_3kg';
+      } else if (presetKey === 'teacher_standing') {
+        document.getElementById('profNameInput').value = 'Hendyka';
+        document.getElementById('profAgeInput').value = 32;
+        document.getElementById('profGoalSelect').value = 'posture_relief';
+        document.getElementById('profWorkStyleSelect').value = 'standing_active';
+        document.getElementById('profCommuteModeSelect').value = 'motorcycle';
+        document.getElementById('profCommuteMinInput').value = 45;
+        document.getElementById('profEquipmentSelect').value = 'dumbbell_3kg';
+      } else if (presetKey === 'wfh_bodyweight') {
+        document.getElementById('profNameInput').value = 'Mode WFH';
+        document.getElementById('profAgeInput').value = 30;
+        document.getElementById('profGoalSelect').value = 'recomp_waist';
+        document.getElementById('profWorkStyleSelect').value = 'desk_8h';
+        document.getElementById('profCommuteModeSelect').value = 'wfh_walk';
+        document.getElementById('profCommuteMinInput').value = 0;
+        document.getElementById('profEquipmentSelect').value = 'bodyweight_only';
+      }
+      updateProfilerLivePreview();
+    }
+
+    function openUserProfilerModal() {
+      const modal = document.getElementById('userProfilerModal');
+      if (!modal) return;
+      document.getElementById('profNameInput').value = userProfile.name || 'Beni';
+      document.getElementById('profAgeInput').value = userProfile.age || 33;
+      document.getElementById('profGoalSelect').value = userProfile.goal || 'recomp_waist';
+      document.getElementById('profWorkStyleSelect').value = userProfile.workStyle || 'desk_8h';
+      document.getElementById('profCommuteModeSelect').value = userProfile.commuteMode || 'motorcycle';
+      document.getElementById('profCommuteMinInput').value = userProfile.commuteMinutes !== undefined ? userProfile.commuteMinutes : 90;
+      document.getElementById('profEquipmentSelect').value = userProfile.equipment || 'dumbbell_3kg';
+
+      ['profNameInput', 'profAgeInput', 'profGoalSelect', 'profWorkStyleSelect', 'profCommuteModeSelect', 'profCommuteMinInput', 'profEquipmentSelect'].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) el.onchange = updateProfilerLivePreview;
+        if (el) el.oninput = updateProfilerLivePreview;
+      });
+      updateProfilerLivePreview();
+      modal.classList.remove('hidden');
+    }
+
+    function closeUserProfilerModal() {
+      const modal = document.getElementById('userProfilerModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function saveUserProfileFromModal() {
+      userProfile = {
+        name: ((document.getElementById('profNameInput') || {}).value || 'Beni').trim(),
+        age: parseInt((document.getElementById('profAgeInput') || {}).value, 10) || 33,
+        goal: (document.getElementById('profGoalSelect') || {}).value || 'recomp_waist',
+        workStyle: (document.getElementById('profWorkStyleSelect') || {}).value || 'desk_8h',
+        commuteMode: (document.getElementById('profCommuteModeSelect') || {}).value || 'motorcycle',
+        commuteMinutes: parseInt((document.getElementById('profCommuteMinInput') || {}).value, 10) || 0,
+        equipment: (document.getElementById('profEquipmentSelect') || {}).value || 'dumbbell_3kg',
+        updatedAt: new Date().toISOString().slice(0, 10)
+      };
+      safeStorageSet('fitdesk_user_profile_v1', JSON.stringify(userProfile));
+
+      const ageInput = document.getElementById('userAgeInput');
+      if (ageInput) {
+        ageInput.value = userProfile.age;
+        if (typeof updateHrZones === 'function') updateHrZones();
+      }
+      const hdrLbl = document.getElementById('headerProfileShortLabel');
+      if (hdrLbl) hdrLbl.textContent = userProfile.name;
+
+      closeUserProfilerModal();
+      renderSelectedDayDetails();
+      pushStateToCloud(false);
+      showToast('✅ Profil ' + userProfile.name + ' disimpan! Program otot & terapi postur telah dikalibrasi.', 'info');
+    }
+
     let isFocusPlayerMode = true;
     let currentFocusIndex = 0;
     let voiceCoachEnabled = safeStorageGet('fitdesk_voice_coach_v1', 'on') !== 'off';
@@ -3678,8 +4029,11 @@ gunicorn==23.0.0</code></pre>
       document.getElementById('dayAnglesBadge').textContent = '🎯 ' + d.shortFocus;
       document.getElementById('dayTitleHeading').textContent = d.title;
       document.getElementById('dayPurposeDesc').textContent = d.purpose;
-      document.getElementById('dayWarmupText').textContent = d.warmup;
-      document.getElementById('dayCooldownText').textContent = d.cooldown;
+      const profAdapt = getProfileAdaptationDetails(userProfile);
+      document.getElementById('dayWarmupText').textContent = d.warmup + ' • [Kalibrasi ' + profAdapt.workLabel + ']: ' + profAdapt.workAdvice;
+      document.getElementById('dayCooldownText').textContent = d.cooldown + ' • [De-kompresi ' + profAdapt.commuteLabel + ']: ' + profAdapt.commuteAdvice;
+      const hdrLbl = document.getElementById('headerProfileShortLabel');
+      if (hdrLbl && userProfile.name) hdrLbl.textContent = userProfile.name;
 
       const ov = getOverloadStatusForDay(selectedDayKey);
       document.getElementById('dayOverloadText').textContent = ov.text;
@@ -3737,8 +4091,37 @@ gunicorn==23.0.0</code></pre>
         </button>`;
       }).join('');
 
+      const currentIsoWeek = activeIsoWeekKey || getCurrentIsoWeekKey();
       const playerHeaderHtml = `
         <div class="${isFocusPlayerMode ? 'w-full' : 'col-span-1 lg:col-span-2 w-full'} bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2.5">
+          <!-- Baris Info Profil Aktif & Status Auto-Reset Mingguan -->
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-200/80 text-xs">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-extrabold">
+                👤 ${userProfile.name} (${userProfile.age} thn)
+              </span>
+              <span class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 font-semibold">
+                ${profAdapt.workLabel}
+              </span>
+              <span class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 font-semibold">
+                ${profAdapt.commuteLabel}
+              </span>
+              <span class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 font-semibold">
+                ${profAdapt.equipLabel}
+              </span>
+              <span class="px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold" title="Otomatis me-reset centang set setiap berganti minggu kalender (Senin 00:00)">
+                🗓️ ${currentIsoWeek} (Auto-Reset Mingguan ON)
+              </span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button onclick="openUserProfilerModal()" class="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold transition">
+                ⚙️ Ubah Profil
+              </button>
+              <button onclick="manualResetWeeklyChecklist()" class="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold transition" title="Reset seluruh set minggu ini ke 0">
+                🔄 Reset Minggu
+              </button>
+            </div>
+          </div>
           <div class="flex flex-wrap items-center justify-between gap-2.5">
             <div class="flex items-center gap-1.5 flex-wrap">
               <span class="text-xs font-bold text-slate-500 mr-1">Langkah:</span>
@@ -3842,7 +4225,7 @@ gunicorn==23.0.0</code></pre>
                 🔁 Target: ${ex.sets} &times; ${ex.reps}${bonusTag}
               </div>
               <div class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold leading-snug break-words">
-                🏋️ Beban: ${ex.weightRec}
+                🏋️ Beban: ${adaptWeightRecommendation(ex.weightRec)}
               </div>
             </div>
           </div>
@@ -3976,8 +4359,13 @@ gunicorn==23.0.0</code></pre>
       applyStreamlinedLayout();
     };
 
+    window.addEventListener('focus', function () {
+      checkAndApplyWeeklyAutoReset();
+    });
+
     window.addEventListener('DOMContentLoaded', function () {
       setTimeout(function () {
+        checkAndApplyWeeklyAutoReset();
         const d = SCHEDULE_DATA[selectedDayKey];
         if (d && d.exercises) {
           const firstUndone = d.exercises.findIndex(function (e) { return !completedExercisesMap[e.id]; });
