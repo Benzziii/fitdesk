@@ -3263,13 +3263,54 @@ gunicorn==23.0.0</code></pre>
       startMetronomeForExercise(exId, targetReps, totalSets, waitSec, safeName, idx, totalLen, false);
     }
 
+    let currentTimerCategory = 'rest'; // 'vacuum' | 'warmup' | 'cooldown' | 'rest'
+
+    function detectTimerCategory(labelText) {
+      const lbl = String(labelText || '').toLowerCase();
+      if (lbl.indexOf('vacuum') !== -1 || lbl.indexOf('pusar') !== -1) {
+        return 'vacuum';
+      }
+      if (lbl.indexOf('pemanasan') !== -1 || lbl.indexOf('warm') !== -1) {
+        return 'warmup';
+      }
+      if (
+        lbl.indexOf('pendinginan') !== -1 ||
+        lbl.indexOf('peregangan') !== -1 ||
+        lbl.indexOf('kompresi') !== -1 ||
+        lbl.indexOf('micro-break') !== -1
+      ) {
+        return 'cooldown';
+      }
+      return 'rest';
+    }
+
     const _origSetTimerPreset = setTimerPreset;
     setTimerPreset = function (seconds, labelText) {
-      stopTempoMetronome(true, true);
+      currentTimerCategory = detectTimerCategory(labelText);
+      // Jika mulai Vacuum / Pemanasan / Peregangan, hentikan metronom tanpa memicu auto-start set
+      stopTempoMetronome(true, currentTimerCategory === 'rest');
       if (wakeLockEnabled) requestScreenWakeLock();
       _origSetTimerPreset(seconds, labelText);
+
       if (voiceCoachEnabled && soundEnabled) {
-        speakCoach('Timer dimulai, ' + seconds + ' detik.', true);
+        if (currentTimerCategory === 'vacuum') {
+          speakCoach(
+            'Mulai Stomach Vacuum ' + seconds + ' detik. Buang napas habis, lalu tarik pusar sedalam mungkin ke arah tulang belakang sambil tetap bernapas tipis.',
+            true
+          );
+        } else if (currentTimerCategory === 'warmup') {
+          speakCoach(
+            'Mulai pemanasan dinamis lima menit. Putar bahu, pinggul, dan lutut secara perlahan.',
+            true
+          );
+        } else if (currentTimerCategory === 'cooldown') {
+          speakCoach(
+            'Mulai sesi peregangan dan pendinginan otot, ' + seconds + ' detik. Atur napas dalam dan perlahan.',
+            true
+          );
+        } else {
+          speakCoach('Timer istirahat dimulai, ' + seconds + ' detik.', true);
+        }
       }
     };
 
@@ -3285,8 +3326,18 @@ gunicorn==23.0.0</code></pre>
         if (txt === _lastSpokenTimerText) return;
         _lastSpokenTimerText = txt;
 
-        if (txt === '00:10') {
-          speakCoach('Sepuluh detik lagi, bersiap angkat dumbbell.', true);
+        if (txt === '00:15' && currentTimerCategory === 'vacuum') {
+          speakCoach('Lima belas detik lagi, tetap tahan tarikan pusar Anda.', true);
+        } else if (txt === '00:10') {
+          if (currentTimerCategory === 'vacuum') {
+            speakCoach('Sepuluh detik lagi, pertahankan perut tetap kencang.', true);
+          } else if (currentTimerCategory === 'warmup') {
+            speakCoach('Pemanasan tinggal sepuluh detik lagi.', true);
+          } else if (currentTimerCategory === 'cooldown') {
+            speakCoach('Sepuluh detik lagi sebelum peregangan selesai.', true);
+          } else {
+            speakCoach('Sepuluh detik lagi, bersiap angkat dumbbell.', true);
+          }
         } else if (txt === '00:03') {
           speakCoach('Tiga', true);
         } else if (txt === '00:02') {
@@ -3298,15 +3349,36 @@ gunicorn==23.0.0</code></pre>
         _wasTimerRunning = false;
         _lastSpokenTimerText = '00:00';
 
-        if (handsFreeAutoStart && handsFreeSessionActive) {
-          if (metronomeAutoStartTimeoutId) clearTimeout(metronomeAutoStartTimeoutId);
-          metronomeAutoStartTimeoutId = setTimeout(function () {
-            autoStartCurrentActiveExerciseMetronome();
-          }, 1800);
-        } else if (voiceCoachEnabled && soundEnabled) {
-          setTimeout(function () {
-            speakCoach('Waktu istirahat selesai. Ayo mulai set berikutnya!', false);
-          }, 1200);
+        if (currentTimerCategory === 'vacuum') {
+          if (voiceCoachEnabled && soundEnabled) {
+            setTimeout(function () {
+              speakCoach('Tiga puluh detik Stomach Vacuum selesai! Silakan rilekskan perut dan tarik napas normal kembali.', false);
+            }, 1200);
+          }
+        } else if (currentTimerCategory === 'warmup') {
+          if (voiceCoachEnabled && soundEnabled) {
+            setTimeout(function () {
+              speakCoach('Waktu pemanasan selesai. Tubuh sudah siap, mari mulai set pertama!', false);
+            }, 1200);
+          }
+        } else if (currentTimerCategory === 'cooldown') {
+          if (voiceCoachEnabled && soundEnabled) {
+            setTimeout(function () {
+              speakCoach('Sesi peregangan dan pendinginan selesai. Otot dan tulang belakang kembali rileks.', false);
+            }, 1200);
+          }
+        } else {
+          // Kategori 'rest' (Istirahat Antar-Set / Transisi Gerakan)
+          if (handsFreeAutoStart && handsFreeSessionActive) {
+            if (metronomeAutoStartTimeoutId) clearTimeout(metronomeAutoStartTimeoutId);
+            metronomeAutoStartTimeoutId = setTimeout(function () {
+              autoStartCurrentActiveExerciseMetronome();
+            }, 1800);
+          } else if (voiceCoachEnabled && soundEnabled) {
+            setTimeout(function () {
+              speakCoach('Waktu istirahat selesai. Ayo mulai set berikutnya!', false);
+            }, 1200);
+          }
         }
       }
     }, 250);
@@ -3374,6 +3446,7 @@ gunicorn==23.0.0</code></pre>
         safeStorageSet('fitdesk_completed_exercises_v4', JSON.stringify(completedExercisesMap));
 
         const waitSec = restSec && restSec > 0 ? restSec : 45;
+        currentTimerCategory = 'rest';
         _origSetTimerPreset(waitSec, 'Istirahat Set ' + doneSets + '/' + totalSets + ': ' + exName);
         renderSelectedDayDetails();
         pushStateToCloud(false);
@@ -3417,6 +3490,7 @@ gunicorn==23.0.0</code></pre>
       currentFocusIndex = targetIdx;
 
       if (restSec && restSec > 0) {
+        currentTimerCategory = 'rest';
         _origSetTimerPreset(restSec, 'Transisi -> ' + (nextEx ? nextEx.name : exName));
       }
 
